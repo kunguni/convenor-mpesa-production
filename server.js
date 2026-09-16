@@ -216,7 +216,7 @@ app.post("/api/mpesa/stkpush", requireLogin, async (req, res) => {
                 PhoneNumber: phone,
 
                CallBackURL:
-    "https://valentine-extensions-pottery-joining.trycloudflare.com/api/mpesa/callback",
+    "https://convenor-mpesa-production.onrender.com/api/mpesa/callback",
                 AccountReference: "Convenor",
                 TransactionDesc: "Convenor Insurance Payment"
             },
