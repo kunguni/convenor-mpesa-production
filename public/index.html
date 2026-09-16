@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Convenor M-Pesa</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            color: #1f2937;
+        }
+
+        .header {
+            background: #2b9ed8;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .header p {
+            margin: 6px 0 0;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+
+        label {
+            display: block;
+            margin-top: 18px;
+            margin-bottom: 7px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #2b9ed8;
+            box-shadow: 0 0 0 2px rgba(43, 158, 216, 0.15);
+        }
+
+        input.invalid {
+            border-color: #dc2626;
+        }
+
+        input.valid {
+            border-color: #16a34a;
+        }
+
+        .field-error {
+            color: #dc2626;
+            font-size: 13px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background: #2b9ed8;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .processing {
+            background: #fff7ed;
+        }
+
+        .success {
+            background: #ecfdf5;
+        }
+
+        .error {
+            background: #fef2f2;
+        }
+
+        .receipt {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>Convenor M-Pesa</h1>
+        <p>Payment Collection Portal</p>
+    </div>
+
+    <div class="container">
+
+        <div class="card">
+
+            <h2>Request Payment</h2>
+
+            <label for="clientName">Client Name</label>
+
+            <input
+                id="clientName"
+                type="text"
+                placeholder="John Kamau"
+            >
+
+            <label for="phone">Client Phone Number</label>
+
+            <input
+                id="phone"
+                type="tel"
+                inputmode="numeric"
+                maxlength="13"
+                minlength="10"
+                placeholder="0712345678"
+                autocomplete="tel"
+            >
+
+            <div id="phoneError" class="field-error"></div>
+
+
+            <label for="amount">Amount (KSh)</label>
+
+            <input
+                id="amount"
+                type="number"
+                placeholder="5000"
+                min="1"
+            >
+
+
+            <label for="paymentCategory">Payment For</label>
+
+            <select id="paymentCategory" onchange="handlePaymentCategory()">
+
+                <option value="">Select payment type</option>
+
+                <option value="Motor Insurance">
+                    Motor Insurance
+                </option>
+
+                <option value="Other">
+                    Other
+                </option>
+
+            </select>
+
+
+            <div id="motorFields" style="display: none;">
+
+                <label for="registrationNumber">
+                    Registration Number
+                </label>
+
+                <input
+                    id="registrationNumber"
+                    type="text"
+                    placeholder="KAB 915Z"
+                    maxlength="8"
+                    autocomplete="off"
+                >
+
+                <div id="registrationError" class="field-error"></div>
+
+            </div>
+
+
+            <div id="otherFields" style="display: none;">
+
+                <label for="otherInsuranceType">
+                    Insurance Type
+                </label>
+
+                <select
+                    id="otherInsuranceType"
+                    onchange="handleInsuranceType()"
+                >
+
+                    <option value="">
+                        Select insurance type
+                    </option>
+
+                    <option value="Medical">
+                        Medical
+                    </option>
+
+                    <option value="Domestic Package">
+                        Domestic Package
+                    </option>
+
+                    <option value="Travel Insurance">
+                        Travel Insurance
+                    </option>
+
+                    <option value="Property Insurance">
+                        Property Insurance
+                    </option>
+
+                    <option value="Personal Accident">
+                        Personal Accident
+                    </option>
+
+                    <option value="Education Insurance">
+                        Education Insurance
+                    </option>
+
+                    <option value="Other">
+                        Other
+                    </option>
+
+                </select>
+
+
+                <div id="policyField" style="display: none;">
+
+                    <label for="policyNumber">
+                        Policy Number
+                    </label>
+
+                    <input
+                        id="policyNumber"
+                        type="text"
+                        placeholder="Enter policy number"
+                    >
+
+                </div>
+
+            </div>
+
+
+            <button
+                id="payButton"
+                onclick="requestPayment()"
+            >
+                REQUEST PAYMENT
+            </button>
+
+
+            <button
+                type="button"
+                onclick="window.location.href='/payments'"
+                style="margin-top: 12px; background: #374151;"
+            >
+                VIEW PAYMENTS
+            </button>
+
+
+            <div id="status" class="status"></div>
+
+        </div>
+
+    </div>
+
+
+<script>
+
+
+/* =========================================================
+   PHONE NUMBER VALIDATION
+   ========================================================= */
+
+function validatePhone() {
+
+    const phoneInput =
+        document.getElementById("phone");
+
+    const phoneError =
+        document.getElementById("phoneError");
+
+    let phone =
+        phoneInput.value.trim();
+
+    // Remove everything except numbers
+    phone = phone.replace(/\D/g, "");
+
+    // Put cleaned value back into field
+    phoneInput.value = phone;
+
+    // Empty
+    if (!phone) {
+
+        phoneInput.classList.remove("valid");
+        phoneInput.classList.remove("invalid");
+
+        phoneError.style.display = "none";
+
+        return false;
+    }
+
+    // Minimum 10 digits
+    if (phone.length < 10) {
+
+        phoneInput.classList.add("invalid");
+        phoneInput.classList.remove("valid");
+
+        phoneError.innerText =
+            "Phone number must contain at least 10 digits.";
+
+        phoneError.style.display = "block";
+
+        return false;
+    }
+
+    // Maximum 13 digits
+    if (phone.length > 13) {
+
+        phoneInput.classList.add("invalid");
+        phoneInput.classList.remove("valid");
+
+        phoneError.innerText =
+            "Phone number cannot exceed 13 digits.";
+
+        phoneError.style.display = "block";
+
+        return false;
+    }
+
+    /*
+       Kenyan phone validation.
+
+       Accept:
+       0712345678
+       0112345678
+       254712345678
+       254112345678
+
+       Reject other formats.
+    */
+
+    const kenyanPhonePattern =
+        /^(0[17]\d{8}|254[17]\d{8}|0[1]\d{8}|254[1]\d{8})$/;
+
+    if (!kenyanPhonePattern.test(phone)) {
+
+        phoneInput.classList.add("invalid");
+        phoneInput.classList.remove("valid");
+
+        phoneError.innerText =
+            "Enter a valid Kenyan phone number, e.g. 0712345678.";
+
+        phoneError.style.display = "block";
+
+        return false;
+    }
+
+    phoneInput.classList.remove("invalid");
+    phoneInput.classList.add("valid");
+
+    phoneError.style.display = "none";
+
+    return true;
+}
+
+
+/*
+   Only allow numbers while typing.
+*/
+
+document
+    .getElementById("phone")
+    .addEventListener("input", function () {
+
+        this.value =
+            this.value.replace(/\D/g, "");
+
+        validatePhone();
+    });
+
+
+
+/* =========================================================
+   VEHICLE REGISTRATION VALIDATION
+   ========================================================= */
+
+/* =========================================================
+   VEHICLE REGISTRATION VALIDATION
+   Supports:
+   1. Kenyan civilian: KAB 915Z
+   2. Kenyan Government: GK 123456
+   3. Kenyan special formats
+   4. UN vehicles: 106 UN 198K / 106 UN 198AK
+   5. UNON formats: UNON DG
+   6. International organization / foreign-style
+      alphanumeric registrations
+   ========================================================= */
+
+function validateRegistrationNumber() {
+
+    const registrationInput =
+        document.getElementById("registrationNumber");
+
+    const registrationError =
+        document.getElementById("registrationError");
+
+    let registration =
+        registrationInput.value
+        .toUpperCase()
+        .trim();
+
+
+    /*
+       Remove unsupported characters.
+
+       We allow:
+       Letters
+       Numbers
+       Spaces
+       Hyphens
+    */
+
+    registration =
+        registration.replace(/[^A-Z0-9\s-]/g, "");
+
+    registrationInput.value =
+        registration;
+
+
+    if (!registration) {
+
+        registrationInput.classList.remove("valid");
+        registrationInput.classList.remove("invalid");
+
+        registrationError.style.display =
+            "none";
+
+        return false;
+    }
+
+
+    /*
+       Normalize multiple spaces.
+    */
+
+    const normalized =
+        registration
+        .replace(/\s+/g, " ")
+        .trim();
+
+
+    /*
+       =====================================================
+       1. STANDARD KENYAN CIVILIAN
+       
+       Example:
+       KAB 915Z
+       KAA 123A
+       KEA 123A
+       =====================================================
+    */
+
+    const kenyanCivilian =
+        /^[K][A-Z]{2}\s?[0-9]{3}[A-Z]$/;
+
+
+    /*
+       =====================================================
+       2. KENYAN GOVERNMENT
+
+       Example:
+       GK 123456
+       =====================================================
+    */
+
+    const kenyanGovernment =
+        /^GK\s?[0-9]{6}$/;
+
+
+    /*
+       =====================================================
+       3. KENYAN SPECIAL GOVERNMENT / SERVICE PLATES
+
+       Examples:
+       KA 12345
+       KAF 1234
+       KN 1234
+       KAI 1234
+       =====================================================
+    */
+
+    const kenyanSpecial =
+        /^(KA|KAF|KN|KAI|KCG)\s?[0-9]{4,6}$/;
+
+
+    /*
+       =====================================================
+       4. UNITED NATIONS VEHICLES
+
+       Current Kenyan rules specify:
+
+       000 UN 000AK
+
+       The "A" component may change after each
+       999 units while K remains constant.
+
+       We therefore accept:
+
+       106 UN 198K
+       106 UN 198AK
+       106UN198K
+       106 UN 198 AK
+
+       The user's example is specifically supported.
+       =====================================================
+    */
+
+    const unitedNations =
+        /^\d{3}\s?UN\s?\d{3}(?:A)?K$/;
+
+
+    /*
+       =====================================================
+       5. UN REPRESENTATIONAL VEHICLE
+
+       Example:
+       UNON DG
+       =====================================================
+    */
+
+    const unRepresentational =
+        /^UNON\s?DG$/;
+
+
+    /*
+       =====================================================
+       6. SPECIAL UN VEHICLES
+
+       Examples:
+       UN 001
+       UN 002
+       =====================================================
+    */
+
+    const unSpecial =
+        /^UN\s?00[12]$/;
+
+
+    /*
+       =====================================================
+       7. PERMANENT MISSIONS
+
+       Example:
+       000 PR UN 00
+       =====================================================
+    */
+
+    const permanentMission =
+        /^\d{3}\s?PR\s?UN\s?\d{2}$/;
+
+
+    /*
+       =====================================================
+       8. KENYAN INTERNATIONAL ORGANIZATIONS
+
+       Current rules use KX + two numbers + A/B.
+
+       Examples:
+       KX 12 A
+       KX12A
+       KX 45 B
+       =====================================================
+    */
+
+    const internationalOrganization =
+        /^KX\s?\d{2}\s?[AB]$/;
+
+
+    /*
+       =====================================================
+       9. DIPLOMATIC VEHICLES
+
+       Current Kenyan rules use formats based around
+       diplomatic codes.
+
+       Examples such as:
+       5 CD 18 K
+       106 CD 123 K
+
+       We allow 1–3 digit mission codes.
+       =====================================================
+    */
+
+    const diplomatic =
+        /^\d{1,3}\s?CD\s?\d{1,3}\s?[A-Z]$/;
+
+
+    /*
+       =====================================================
+       10. GENERIC INTERNATIONAL FORMAT
+
+       Foreign registrations vary enormously.
+
+       We therefore allow a conservative international
+       alphanumeric format containing:
+
+       - Letters
+       - Numbers
+       - Spaces
+       - Optional hyphens
+
+       Length: 2–15 characters.
+
+       This catches legitimate foreign formats without
+       accepting completely arbitrary text.
+       =====================================================
+    */
+
+    const internationalGeneric =
+        /^(?=.*[A-Z])(?=.*\d)[A-Z0-9]+(?:[\s-][A-Z0-9]+)*$/;
+
+
+    /*
+       =====================================================
+       FINAL VALIDATION
+       =====================================================
+    */
+
+    const isValid =
+        kenyanCivilian.test(normalized) ||
+        kenyanGovernment.test(normalized) ||
+        kenyanSpecial.test(normalized) ||
+        unitedNations.test(normalized) ||
+        unRepresentational.test(normalized) ||
+        unSpecial.test(normalized) ||
+        permanentMission.test(normalized) ||
+        internationalOrganization.test(normalized) ||
+        diplomatic.test(normalized) ||
+        (
+            normalized.length >= 2 &&
+            normalized.length <= 15 &&
+            internationalGeneric.test(normalized)
+        );
+
+
+    if (!isValid) {
+
+        registrationInput.classList.add("invalid");
+        registrationInput.classList.remove("valid");
+
+        registrationError.innerText =
+            "Enter a valid vehicle registration number, e.g. KAB 915Z or 106 UN 198K.";
+
+        registrationError.style.display =
+            "block";
+
+        return false;
+    }
+
+
+    /*
+       VALID
+    */
+
+    registrationInput.classList.remove("invalid");
+    registrationInput.classList.add("valid");
+
+    registrationError.style.display =
+        "none";
+
+    return true;
+}
+
+
+
+/* =========================================================
+   REGISTRATION INPUT HANDLER
+   ========================================================= */
+
+document
+    .getElementById("registrationNumber")
+    .addEventListener("input", function () {
+
+        /*
+           Automatically convert letters to uppercase.
+        */
+
+        this.value =
+            this.value.toUpperCase();
+        /*
+           Validate while typing.
+        */
+        validateRegistrationNumber();
+    });
+
+/*
+   Automatically convert registration letters
+   to uppercase while typing.
+*/
+
+document
+    .getElementById("registrationNumber")
+    .addEventListener("input", function () {
+
+        this.value =
+            this.value.toUpperCase();
+
+        validateRegistrationNumber();
+
+    });
+
+
+
+/* =========================================================
+   PAYMENT CATEGORY
+   ========================================================= */
+
+function handlePaymentCategory() {
+
+    const category =
+        document.getElementById("paymentCategory").value;
+
+    const motorFields =
+        document.getElementById("motorFields");
+
+    const otherFields =
+        document.getElementById("otherFields");
+
+    const policyField =
+        document.getElementById("policyField");
+
+
+    motorFields.style.display =
+        "none";
+
+    otherFields.style.display =
+        "none";
+
+    policyField.style.display =
+        "none";
+
+
+    if (category === "Motor Insurance") {
+
+        motorFields.style.display =
+            "block";
+
+    }
+
+
+    if (category === "Other") {
+
+        otherFields.style.display =
+            "block";
+
+    }
+
+}
+
+
+
+/* =========================================================
+   INSURANCE TYPE
+   ========================================================= */
+
+function handleInsuranceType() {
+
+    const insuranceType =
+        document.getElementById("otherInsuranceType").value;
+
+    const policyField =
+        document.getElementById("policyField");
+
+
+    if (insuranceType) {
+
+        policyField.style.display =
+            "block";
+
+    } else {
+
+        policyField.style.display =
+            "none";
+
+    }
+
+}
+
+
+
+/* =========================================================
+   CLEAR PAYMENT FORM
+   ========================================================= */
+
+function clearPaymentForm() {
+
+    document.getElementById("clientName").value = "";
+
+    document.getElementById("phone").value = "";
+
+    document.getElementById("amount").value = "";
+
+    document.getElementById("paymentCategory").value = "";
+
+    document.getElementById("otherInsuranceType").value = "";
+
+    document.getElementById("registrationNumber").value = "";
+
+    document.getElementById("policyNumber").value = "";
+
+
+    document.getElementById("phone")
+        .classList.remove("valid", "invalid");
+
+    document.getElementById("registrationNumber")
+        .classList.remove("valid", "invalid");
+
+
+    document.getElementById("phoneError")
+        .style.display = "none";
+
+    document.getElementById("registrationError")
+        .style.display = "none";
+
+
+    document.getElementById("motorFields")
+        .style.display = "none";
+
+    document.getElementById("otherFields")
+        .style.display = "none";
+
+    document.getElementById("policyField")
+        .style.display = "none";
+
+}
+
+
+
+/* =========================================================
+   REQUEST PAYMENT
+   ========================================================= */
+
+async function requestPayment() {
+
+    const phoneInput =
+        document.getElementById("phone");
+
+    const amountInput =
+        document.getElementById("amount");
+
+    const clientNameInput =
+        document.getElementById("clientName");
+
+    const paymentCategoryInput =
+        document.getElementById("paymentCategory");
+
+    const otherInsuranceTypeInput =
+        document.getElementById("otherInsuranceType");
+
+    const registrationNumberInput =
+        document.getElementById("registrationNumber");
+
+    const policyNumberInput =
+        document.getElementById("policyNumber");
+
+    const button =
+        document.getElementById("payButton");
+
+    const status =
+        document.getElementById("status");
+
+
+    let phone =
+        phoneInput.value.trim();
+
+    const amount =
+        Number(amountInput.value);
+
+    const clientName =
+        clientNameInput.value.trim();
+
+    const paymentCategory =
+        paymentCategoryInput.value;
+
+    const otherInsuranceType =
+        otherInsuranceTypeInput.value;
+
+    const registrationNumber =
+        registrationNumberInput.value.trim();
+
+    const policyNumber =
+        policyNumberInput.value.trim();
+
+
+
+    /* =====================================================
+       VALIDATE PHONE
+       ===================================================== */
+
+    if (!validatePhone()) {
+
+        status.style.display =
+            "block";
+
+        status.className =
+            "status error";
+
+        status.innerHTML =
+            "❌ Please enter a valid phone number.";
+
+        phoneInput.focus();
+
+        return;
+    }
+
+
+
+    /* =====================================================
+       VALIDATE REGISTRATION NUMBER
+       ===================================================== */
+
+    if (
+        paymentCategory === "Motor Insurance"
+    ) {
+
+        if (!validateRegistrationNumber()) {
+
+            status.style.display =
+                "block";
+
+            status.className =
+                "status error";
+
+            status.innerHTML =
+                "❌ Please enter a valid vehicle registration number.";
+
+            registrationNumberInput.focus();
+
+            return;
+        }
+    }
+
+
+
+    /* =====================================================
+       BASIC VALIDATION
+       ===================================================== */
+
+    if (
+        !clientName ||
+        !phone ||
+        !amount ||
+        !paymentCategory
+    ) {
+
+        status.style.display =
+            "block";
+
+        status.className =
+            "status error";
+
+        status.innerHTML =
+            "Please enter the client name, phone number, amount and payment purpose.";
+
+        return;
+    }
+
+
+
+    /* =====================================================
+       MOTOR INSURANCE VALIDATION
+       ===================================================== */
+
+    if (
+        paymentCategory === "Motor Insurance" &&
+        !registrationNumber
+    ) {
+
+        status.style.display =
+            "block";
+
+        status.className =
+            "status error";
+
+        status.innerHTML =
+            "Please enter the vehicle registration number.";
+
+        return;
+    }
+
+
+
+    /* =====================================================
+       OTHER INSURANCE VALIDATION
+       ===================================================== */
+
+    if (
+        paymentCategory === "Other" &&
+        (!otherInsuranceType || !policyNumber)
+    ) {
+
+        status.style.display =
+            "block";
+
+        status.className =
+            "status error";
+
+        status.innerHTML =
+            "Please select the insurance type and enter the policy number.";
+
+        return;
+    }
+
+
+
+    /* =====================================================
+       CONVERT KENYAN PHONE FORMAT
+       ===================================================== */
+
+    if (phone.startsWith("0")) {
+
+        phone =
+            "254" +
+            phone.substring(1);
+
+    }
+
+
+
+    /* =====================================================
+       START PAYMENT
+       ===================================================== */
+
+    button.disabled =
+        true;
+
+    button.innerText =
+        "PROCESSING...";
+
+
+    status.style.display =
+        "block";
+
+    status.className =
+        "status processing";
+
+    status.innerHTML =
+        "⏳ Sending payment request...";
+
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/mpesa/stkpush",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        clientName:
+                            clientName,
+
+                        phone:
+                            phone,
+
+                        amount:
+                            amount,
+
+                        paymentCategory:
+                            paymentCategory,
+
+                        insuranceType:
+                            otherInsuranceType,
+
+                        registrationNumber:
+                            registrationNumber,
+
+                        policyNumber:
+                            policyNumber
+
+                    })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Payment request failed"
+            );
+
+        }
+
+
+
+        const checkoutRequestId =
+            data.CheckoutRequestID;
+
+
+        if (!checkoutRequestId) {
+
+            throw new Error(
+                "No CheckoutRequestID received."
+            );
+
+        }
+
+
+
+        status.className =
+            "status processing";
+
+
+        status.innerHTML = `
+            ⏳ Payment request sent.<br><br>
+            Waiting for customer to complete payment...
+        `;
+
+
+        button.innerText =
+            "WAITING...";
+
+
+
+        checkPaymentStatus(
+            checkoutRequestId
+        );
+
+
+    } catch (error) {
+
+        status.className =
+            "status error";
+
+
+        status.innerHTML = `
+            ❌ ${error.message}
+        `;
+
+
+        button.disabled =
+            false;
+
+
+        button.innerText =
+            "REQUEST PAYMENT";
+
+    }
+
+}
+
+
+
+/* =========================================================
+   CHECK PAYMENT STATUS
+   ========================================================= */
+
+async function checkPaymentStatus(
+    checkoutRequestId
+) {
+
+    const button =
+        document.getElementById("payButton");
+
+    const status =
+        document.getElementById("status");
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/mpesa/status/${encodeURIComponent(checkoutRequestId)}`
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Could not check payment status."
+            );
+
+        }
+
+
+
+        /* PAYMENT SUCCESSFUL */
+
+        if (
+            data.status === "SUCCESS"
+        ) {
+
+            const payment =
+                data.payment;
+
+
+            status.className =
+                "status success";
+
+
+            status.innerHTML = `
+                <strong>✅ PAYMENT SUCCESSFUL</strong>
+
+                <div class="receipt">
+                    Amount: KSh ${payment.amount}<br>
+                    Phone: ${payment.phone}<br>
+                    M-Pesa Receipt:
+                    <strong>${payment.mpesa_receipt}</strong>
+                </div>
+            `;
+
+
+            button.disabled =
+                false;
+
+
+            button.innerText =
+                "REQUEST PAYMENT";
+
+
+            clearPaymentForm();
+
+
+            return;
+        }
+
+
+
+        /* PAYMENT FAILED */
+
+        if (
+            data.status === "FAILED"
+        ) {
+
+            status.className =
+                "status error";
+
+
+            status.innerHTML = `
+                <strong>❌ PAYMENT FAILED</strong>
+
+                <div class="receipt">
+                    ${
+                        data.payment?.result_description ||
+                        "Payment was not completed."
+                    }
+                </div>
+            `;
+
+
+            button.disabled =
+                false;
+
+
+            button.innerText =
+                "REQUEST PAYMENT";
+
+
+            clearPaymentForm();
+
+
+            return;
+        }
+
+
+
+        /* STILL WAITING */
+
+        status.className =
+            "status processing";
+
+
+        status.innerHTML = `
+            ⏳ Waiting for customer to complete payment...
+        `;
+
+
+        setTimeout(() => {
+
+            checkPaymentStatus(
+                checkoutRequestId
+            );
+
+        }, 3000);
+
+
+    } catch (error) {
+
+        console.error(
+            "STATUS CHECK ERROR:",
+            error
+        );
+
+
+        status.className =
+            "status error";
+
+
+        status.innerHTML = `
+            ❌ Unable to check payment status.
+        `;
+
+
+        button.disabled =
+            false;
+
+
+        button.innerText =
+            "REQUEST PAYMENT";
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>

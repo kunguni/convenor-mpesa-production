@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Convenor M-Pesa | Login</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: linear-gradient(135deg, #e8f7ff, #ffffff);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 18px;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.12);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .logo h1 {
+            margin: 0;
+            color: #168acb;
+            font-size: 30px;
+        }
+
+        .logo p {
+            margin-top: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #222;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #168acb;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: #168acb;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1176ae;
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .error {
+            display: none;
+            background: #ffe8e8;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 25px;
+            color: #888;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="login-container">
+
+    <div class="login-card">
+
+        <div class="logo">
+            <h1>CONVENOR</h1>
+            <p>M-Pesa Payment Portal</p>
+        </div>
+
+        <h2>Secure Login</h2>
+
+        <div id="errorMessage" class="error"></div>
+
+        <form id="loginForm">
+
+            <label for="username">Username</label>
+
+            <input
+                type="text"
+                id="username"
+                placeholder="Enter your username"
+                required
+                autocomplete="username"
+            >
+
+            <label for="password">Password</label>
+
+            <input
+                type="password"
+                id="password"
+                placeholder="Enter your password"
+                required
+                autocomplete="current-password"
+            >
+
+            <button type="submit" id="loginButton">
+                SIGN IN
+            </button>
+
+        </form>
+
+        <div class="footer">
+            🔒 Secure Payment Management<br>
+            © 2026 Convenor Insurance Agency
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const loginForm = document.getElementById("loginForm");
+const errorMessage = document.getElementById("errorMessage");
+const loginButton = document.getElementById("loginButton");
+
+loginForm.addEventListener("submit", async (e) => {
+
+    e.preventDefault();
+
+    errorMessage.style.display = "none";
+
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+
+    loginButton.disabled = true;
+    loginButton.textContent = "Signing in...";
+
+    try {
+
+        const response = await fetch("/api/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                username,
+                password
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "Login failed");
+        }
+
+        window.location.href = "/dashboard";
+
+    } catch (error) {
+
+        errorMessage.textContent = error.message;
+        errorMessage.style.display = "block";
+
+        loginButton.disabled = false;
+        loginButton.textContent = "SIGN IN";
+    }
+
+});
+
+</script>
+
+</body>
+</html>

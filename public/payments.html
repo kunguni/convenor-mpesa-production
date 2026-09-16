@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Convenor M-Pesa Dashboard</title>
+
+    <style>
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fa;
+            color: #222;
+        }
+
+        header {
+            background: #2f99ce;
+            color: white;
+            padding: 25px;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #666;
+        }
+
+        .card .value {
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .table-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9fa;
+        }
+
+        .success {
+            color: #198754;
+            font-weight: bold;
+        }
+
+        .failed {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .pending {
+            color: #f0ad4e;
+            font-weight: bold;
+        }
+
+        @media (max-width: 700px) {
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 13px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<header>
+
+    <h1>CONVENOR M-PESA</h1>
+
+    <p>Payment Dashboard</p>
+
+</header>
+
+
+<div class="container">
+
+    <div class="stats">
+
+        <div class="card">
+
+            <h3>Today's Collections</h3>
+
+            <div class="value" id="todayAmount">
+                KSh 0
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>Successful Payments</h3>
+
+            <div class="value" id="successfulCount">
+                0
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>Total Transactions</h3>
+
+            <div class="value" id="totalCount">
+                0
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="table-card">
+
+        <h2>Payment History</h2>
+
+        <table>
+
+            <thead>
+
+                <tr>
+    <th>Client</th>
+    <th>Registration No.</th>
+    <th>Policy No.</th>
+    <th>Phone</th>
+    <th>Amount</th>
+    <th>Payment For</th>
+    <th>M-Pesa Receipt</th>
+    <th>Status</th>
+    <th>Date</th>
+</tr>
+            </thead>
+
+            <tbody id="paymentsTable">
+
+                <tr>
+
+                    <td colspan="9">
+                        Loading payments...
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
+<script>
+
+async function loadPayments() {
+
+    try {
+
+        const response =
+            await fetch("/api/mpesa/payments");
+
+        const data =
+            await response.json();
+
+        const payments =
+            data.payments || [];
+
+        document.getElementById("totalCount")
+            .innerText = payments.length;
+
+
+        const successful =
+            payments.filter(
+                payment =>
+                    payment.status === "SUCCESS"
+            );
+
+        document.getElementById("successfulCount")
+            .innerText = successful.length;
+
+
+        const today =
+            new Date().toISOString().slice(0, 10);
+
+        const todayPayments =
+            successful.filter(payment =>
+                payment.created_at.startsWith(today)
+            );
+
+
+        const todayAmount =
+            todayPayments.reduce(
+                (total, payment) =>
+                    total + Number(payment.amount || 0),
+                0
+            );
+
+
+        document.getElementById("todayAmount")
+            .innerText =
+            `KSh ${todayAmount.toLocaleString()}`;
+
+
+        const table =
+            document.getElementById("paymentsTable");
+
+        if (payments.length === 0) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="9">
+                        No payments yet.
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+
+       table.innerHTML = payments.map(payment => {
+
+    const statusClass =
+        payment.status.toLowerCase();
+
+    return `
+
+        <tr>
+
+            <td>
+                ${payment.client_name || "-"}
+            </td>
+
+            <td>
+                ${payment.registration_number || "-"}
+            </td>
+
+            <td>
+                ${payment.policy_number || "-"}
+            </td>
+
+            <td>
+                ${payment.phone || "-"}
+            </td>
+
+            <td>
+                KSh ${Number(payment.amount || 0).toLocaleString()}
+            </td>
+
+            <td>
+                ${payment.payment_category || "-"}
+            </td>
+
+            <td>
+                ${payment.mpesa_receipt || "-"}
+            </td>
+
+            <td class="${statusClass}">
+                ${payment.status}
+            </td>
+
+            <td>
+                ${payment.created_at || "-"}
+            </td>
+
+        </tr>
+
+    `;
+
+}).join("");
+
+
+    } catch (error) {
+
+        console.error(
+            "Dashboard error:",
+            error
+        );
+
+    }
+
+}
+
+
+loadPayments();
+
+
+// Refresh every 5 seconds
+
+setInterval(
+    loadPayments,
+    5000
+);
+
+</script>
+
+</body>
+
+</html>
