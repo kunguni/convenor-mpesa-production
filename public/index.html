@@ -285,7 +285,25 @@
             >
                 REQUEST PAYMENT
             </button>
-
+            <button
+    type="button"
+    id="cancelPaymentBtn"
+    onclick="cancelPayment()"
+    style="
+        display: none;
+        width: 100%;
+        margin-top: 10px;
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+    "
+>
+    Cancel Payment Request
+</button>
 
             <button
                 type="button"
@@ -305,6 +323,9 @@
 
 <script>
 
+let activeCheckoutRequestId = null;
+let paymentCancelled = false;
+
 
 /* =========================================================
    PHONE NUMBER VALIDATION
@@ -321,13 +342,10 @@ function validatePhone() {
     let phone =
         phoneInput.value.trim();
 
-    // Remove everything except numbers
     phone = phone.replace(/\D/g, "");
 
-    // Put cleaned value back into field
     phoneInput.value = phone;
 
-    // Empty
     if (!phone) {
 
         phoneInput.classList.remove("valid");
@@ -338,7 +356,6 @@ function validatePhone() {
         return false;
     }
 
-    // Minimum 10 digits
     if (phone.length < 10) {
 
         phoneInput.classList.add("invalid");
@@ -352,7 +369,6 @@ function validatePhone() {
         return false;
     }
 
-    // Maximum 13 digits
     if (phone.length > 13) {
 
         phoneInput.classList.add("invalid");
@@ -365,18 +381,6 @@ function validatePhone() {
 
         return false;
     }
-
-    /*
-       Kenyan phone validation.
-
-       Accept:
-       0712345678
-       0112345678
-       254712345678
-       254112345678
-
-       Reject other formats.
-    */
 
     const kenyanPhonePattern =
         /^(0[17]\d{8}|254[17]\d{8}|0[1]\d{8}|254[1]\d{8})$/;
@@ -403,10 +407,6 @@ function validatePhone() {
 }
 
 
-/*
-   Only allow numbers while typing.
-*/
-
 document
     .getElementById("phone")
     .addEventListener("input", function () {
@@ -423,18 +423,6 @@ document
    VEHICLE REGISTRATION VALIDATION
    ========================================================= */
 
-/* =========================================================
-   VEHICLE REGISTRATION VALIDATION
-   Supports:
-   1. Kenyan civilian: KAB 915Z
-   2. Kenyan Government: GK 123456
-   3. Kenyan special formats
-   4. UN vehicles: 106 UN 198K / 106 UN 198AK
-   5. UNON formats: UNON DG
-   6. International organization / foreign-style
-      alphanumeric registrations
-   ========================================================= */
-
 function validateRegistrationNumber() {
 
     const registrationInput =
@@ -448,23 +436,11 @@ function validateRegistrationNumber() {
         .toUpperCase()
         .trim();
 
-
-    /*
-       Remove unsupported characters.
-
-       We allow:
-       Letters
-       Numbers
-       Spaces
-       Hyphens
-    */
-
     registration =
         registration.replace(/[^A-Z0-9\s-]/g, "");
 
     registrationInput.value =
         registration;
-
 
     if (!registration) {
 
@@ -477,193 +453,40 @@ function validateRegistrationNumber() {
         return false;
     }
 
-
-    /*
-       Normalize multiple spaces.
-    */
-
     const normalized =
         registration
         .replace(/\s+/g, " ")
         .trim();
 
-
-    /*
-       =====================================================
-       1. STANDARD KENYAN CIVILIAN
-       
-       Example:
-       KAB 915Z
-       KAA 123A
-       KEA 123A
-       =====================================================
-    */
-
     const kenyanCivilian =
         /^[K][A-Z]{2}\s?[0-9]{3}[A-Z]$/;
-
-
-    /*
-       =====================================================
-       2. KENYAN GOVERNMENT
-
-       Example:
-       GK 123456
-       =====================================================
-    */
 
     const kenyanGovernment =
         /^GK\s?[0-9]{6}$/;
 
-
-    /*
-       =====================================================
-       3. KENYAN SPECIAL GOVERNMENT / SERVICE PLATES
-
-       Examples:
-       KA 12345
-       KAF 1234
-       KN 1234
-       KAI 1234
-       =====================================================
-    */
-
     const kenyanSpecial =
         /^(KA|KAF|KN|KAI|KCG)\s?[0-9]{4,6}$/;
-
-
-    /*
-       =====================================================
-       4. UNITED NATIONS VEHICLES
-
-       Current Kenyan rules specify:
-
-       000 UN 000AK
-
-       The "A" component may change after each
-       999 units while K remains constant.
-
-       We therefore accept:
-
-       106 UN 198K
-       106 UN 198AK
-       106UN198K
-       106 UN 198 AK
-
-       The user's example is specifically supported.
-       =====================================================
-    */
 
     const unitedNations =
         /^\d{3}\s?UN\s?\d{3}(?:A)?K$/;
 
-
-    /*
-       =====================================================
-       5. UN REPRESENTATIONAL VEHICLE
-
-       Example:
-       UNON DG
-       =====================================================
-    */
-
     const unRepresentational =
         /^UNON\s?DG$/;
-
-
-    /*
-       =====================================================
-       6. SPECIAL UN VEHICLES
-
-       Examples:
-       UN 001
-       UN 002
-       =====================================================
-    */
 
     const unSpecial =
         /^UN\s?00[12]$/;
 
-
-    /*
-       =====================================================
-       7. PERMANENT MISSIONS
-
-       Example:
-       000 PR UN 00
-       =====================================================
-    */
-
     const permanentMission =
         /^\d{3}\s?PR\s?UN\s?\d{2}$/;
-
-
-    /*
-       =====================================================
-       8. KENYAN INTERNATIONAL ORGANIZATIONS
-
-       Current rules use KX + two numbers + A/B.
-
-       Examples:
-       KX 12 A
-       KX12A
-       KX 45 B
-       =====================================================
-    */
 
     const internationalOrganization =
         /^KX\s?\d{2}\s?[AB]$/;
 
-
-    /*
-       =====================================================
-       9. DIPLOMATIC VEHICLES
-
-       Current Kenyan rules use formats based around
-       diplomatic codes.
-
-       Examples such as:
-       5 CD 18 K
-       106 CD 123 K
-
-       We allow 1–3 digit mission codes.
-       =====================================================
-    */
-
     const diplomatic =
         /^\d{1,3}\s?CD\s?\d{1,3}\s?[A-Z]$/;
 
-
-    /*
-       =====================================================
-       10. GENERIC INTERNATIONAL FORMAT
-
-       Foreign registrations vary enormously.
-
-       We therefore allow a conservative international
-       alphanumeric format containing:
-
-       - Letters
-       - Numbers
-       - Spaces
-       - Optional hyphens
-
-       Length: 2–15 characters.
-
-       This catches legitimate foreign formats without
-       accepting completely arbitrary text.
-       =====================================================
-    */
-
     const internationalGeneric =
         /^(?=.*[A-Z])(?=.*\d)[A-Z0-9]+(?:[\s-][A-Z0-9]+)*$/;
-
-
-    /*
-       =====================================================
-       FINAL VALIDATION
-       =====================================================
-    */
 
     const isValid =
         kenyanCivilian.test(normalized) ||
@@ -681,7 +504,6 @@ function validateRegistrationNumber() {
             internationalGeneric.test(normalized)
         );
 
-
     if (!isValid) {
 
         registrationInput.classList.add("invalid");
@@ -696,11 +518,6 @@ function validateRegistrationNumber() {
         return false;
     }
 
-
-    /*
-       VALID
-    */
-
     registrationInput.classList.remove("invalid");
     registrationInput.classList.add("valid");
 
@@ -710,32 +527,6 @@ function validateRegistrationNumber() {
     return true;
 }
 
-
-
-/* =========================================================
-   REGISTRATION INPUT HANDLER
-   ========================================================= */
-
-document
-    .getElementById("registrationNumber")
-    .addEventListener("input", function () {
-
-        /*
-           Automatically convert letters to uppercase.
-        */
-
-        this.value =
-            this.value.toUpperCase();
-        /*
-           Validate while typing.
-        */
-        validateRegistrationNumber();
-    });
-
-/*
-   Automatically convert registration letters
-   to uppercase while typing.
-*/
 
 document
     .getElementById("registrationNumber")
@@ -768,7 +559,6 @@ function handlePaymentCategory() {
     const policyField =
         document.getElementById("policyField");
 
-
     motorFields.style.display =
         "none";
 
@@ -778,14 +568,12 @@ function handlePaymentCategory() {
     policyField.style.display =
         "none";
 
-
     if (category === "Motor Insurance") {
 
         motorFields.style.display =
             "block";
 
     }
-
 
     if (category === "Other") {
 
@@ -810,7 +598,6 @@ function handleInsuranceType() {
     const policyField =
         document.getElementById("policyField");
 
-
     if (insuranceType) {
 
         policyField.style.display =
@@ -834,19 +621,12 @@ function handleInsuranceType() {
 function clearPaymentForm() {
 
     document.getElementById("clientName").value = "";
-
     document.getElementById("phone").value = "";
-
     document.getElementById("amount").value = "";
-
     document.getElementById("paymentCategory").value = "";
-
     document.getElementById("otherInsuranceType").value = "";
-
     document.getElementById("registrationNumber").value = "";
-
     document.getElementById("policyNumber").value = "";
-
 
     document.getElementById("phone")
         .classList.remove("valid", "invalid");
@@ -854,13 +634,11 @@ function clearPaymentForm() {
     document.getElementById("registrationNumber")
         .classList.remove("valid", "invalid");
 
-
     document.getElementById("phoneError")
         .style.display = "none";
 
     document.getElementById("registrationError")
         .style.display = "none";
-
 
     document.getElementById("motorFields")
         .style.display = "none";
@@ -870,7 +648,31 @@ function clearPaymentForm() {
 
     document.getElementById("policyField")
         .style.display = "none";
+}
 
+
+
+/* =========================================================
+   RESET PAYMENT BUTTONS
+   ========================================================= */
+
+function resetPaymentButtons() {
+
+    const payButton =
+        document.getElementById("payButton");
+
+    const cancelButton =
+        document.getElementById("cancelPaymentBtn");
+
+    activeCheckoutRequestId = null;
+    paymentCancelled = false;
+
+    payButton.disabled = false;
+    payButton.innerText = "REQUEST PAYMENT";
+
+    cancelButton.style.display = "none";
+    cancelButton.disabled = false;
+    cancelButton.innerText = "Cancel Payment Request";
 }
 
 
@@ -905,6 +707,9 @@ async function requestPayment() {
     const button =
         document.getElementById("payButton");
 
+    const cancelButton =
+        document.getElementById("cancelPaymentBtn");
+
     const status =
         document.getElementById("status");
 
@@ -931,6 +736,11 @@ async function requestPayment() {
         policyNumberInput.value.trim();
 
 
+    /* RESET CANCEL STATE */
+
+    paymentCancelled = false;
+    activeCheckoutRequestId = null;
+
 
     /* =====================================================
        VALIDATE PHONE
@@ -938,11 +748,8 @@ async function requestPayment() {
 
     if (!validatePhone()) {
 
-        status.style.display =
-            "block";
-
-        status.className =
-            "status error";
+        status.style.display = "block";
+        status.className = "status error";
 
         status.innerHTML =
             "❌ Please enter a valid phone number.";
@@ -953,9 +760,8 @@ async function requestPayment() {
     }
 
 
-
     /* =====================================================
-       VALIDATE REGISTRATION NUMBER
+       VALIDATE REGISTRATION
        ===================================================== */
 
     if (
@@ -964,11 +770,8 @@ async function requestPayment() {
 
         if (!validateRegistrationNumber()) {
 
-            status.style.display =
-                "block";
-
-            status.className =
-                "status error";
+            status.style.display = "block";
+            status.className = "status error";
 
             status.innerHTML =
                 "❌ Please enter a valid vehicle registration number.";
@@ -978,7 +781,6 @@ async function requestPayment() {
             return;
         }
     }
-
 
 
     /* =====================================================
@@ -992,18 +794,14 @@ async function requestPayment() {
         !paymentCategory
     ) {
 
-        status.style.display =
-            "block";
-
-        status.className =
-            "status error";
+        status.style.display = "block";
+        status.className = "status error";
 
         status.innerHTML =
             "Please enter the client name, phone number, amount and payment purpose.";
 
         return;
     }
-
 
 
     /* =====================================================
@@ -1015,18 +813,14 @@ async function requestPayment() {
         !registrationNumber
     ) {
 
-        status.style.display =
-            "block";
-
-        status.className =
-            "status error";
+        status.style.display = "block";
+        status.className = "status error";
 
         status.innerHTML =
             "Please enter the vehicle registration number.";
 
         return;
     }
-
 
 
     /* =====================================================
@@ -1038,11 +832,8 @@ async function requestPayment() {
         (!otherInsuranceType || !policyNumber)
     ) {
 
-        status.style.display =
-            "block";
-
-        status.className =
-            "status error";
+        status.style.display = "block";
+        status.className = "status error";
 
         status.innerHTML =
             "Please select the insurance type and enter the policy number.";
@@ -1051,9 +842,8 @@ async function requestPayment() {
     }
 
 
-
     /* =====================================================
-       CONVERT KENYAN PHONE FORMAT
+       CONVERT KENYAN PHONE
        ===================================================== */
 
     if (phone.startsWith("0")) {
@@ -1065,27 +855,20 @@ async function requestPayment() {
     }
 
 
-
     /* =====================================================
        START PAYMENT
        ===================================================== */
 
-    button.disabled =
-        true;
+    button.disabled = true;
+    button.innerText = "PROCESSING...";
 
-    button.innerText =
-        "PROCESSING...";
+    cancelButton.style.display = "none";
 
-
-    status.style.display =
-        "block";
-
-    status.className =
-        "status processing";
+    status.style.display = "block";
+    status.className = "status processing";
 
     status.innerHTML =
         "⏳ Sending payment request...";
-
 
 
     try {
@@ -1143,7 +926,6 @@ async function requestPayment() {
         }
 
 
-
         const checkoutRequestId =
             data.CheckoutRequestID;
 
@@ -1157,14 +939,30 @@ async function requestPayment() {
         }
 
 
+        /* =================================================
+           SAVE ACTIVE TRANSACTION
+           ================================================= */
+
+        activeCheckoutRequestId =
+            checkoutRequestId;
+
+        paymentCancelled = false;
+
+
+        /* SHOW CANCEL BUTTON */
+
+        cancelButton.style.display =
+            "block";
+
 
         status.className =
             "status processing";
 
-
         status.innerHTML = `
-            ⏳ Payment request sent.<br><br>
+            ⏳ <strong>Payment request sent.</strong><br><br>
             Waiting for customer to complete payment...
+            <br><br>
+            You can cancel this request if the details are incorrect.
         `;
 
 
@@ -1172,6 +970,7 @@ async function requestPayment() {
             "WAITING...";
 
 
+        /* START STATUS CHECKING */
 
         checkPaymentStatus(
             checkoutRequestId
@@ -1183,18 +982,162 @@ async function requestPayment() {
         status.className =
             "status error";
 
-
         status.innerHTML = `
             ❌ ${error.message}
         `;
 
+        resetPaymentButtons();
 
-        button.disabled =
-            false;
+    }
+
+}
 
 
+
+/* =========================================================
+   CANCEL PAYMENT
+   ========================================================= */
+
+async function cancelPayment() {
+
+    if (!activeCheckoutRequestId) {
+
+        alert(
+            "There is no active payment request to cancel."
+        );
+
+        return;
+    }
+
+
+    const confirmCancel =
+        confirm(
+            "Are you sure you want to cancel this payment request?"
+        );
+
+
+    if (!confirmCancel) {
+        return;
+    }
+
+
+    const cancelButton =
+        document.getElementById("cancelPaymentBtn");
+
+    const button =
+        document.getElementById("payButton");
+
+    const status =
+        document.getElementById("status");
+
+
+    const checkoutRequestId =
+        activeCheckoutRequestId;
+
+
+    cancelButton.disabled = true;
+
+    cancelButton.innerText =
+        "CANCELLING...";
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/mpesa/cancel-payment",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        checkoutRequestId:
+                            checkoutRequestId
+
+                    })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Failed to cancel payment request."
+            );
+
+        }
+
+
+        /* STOP STATUS CHECKING */
+
+        paymentCancelled = true;
+        activeCheckoutRequestId = null;
+
+
+        status.className =
+            "status error";
+
+        status.innerHTML = `
+            <strong>⚠️ PAYMENT REQUEST CANCELLED</strong>
+            <div class="receipt">
+                The payment request was cancelled by staff.
+                You can now enter the correct details and request a new payment.
+            </div>
+        `;
+
+
+        /* RESET BUTTONS */
+
+        button.disabled = false;
         button.innerText =
             "REQUEST PAYMENT";
+
+        cancelButton.style.display =
+            "none";
+
+        cancelButton.disabled =
+            false;
+
+        cancelButton.innerText =
+            "Cancel Payment Request";
+
+
+        /* CLEAR FORM */
+
+        clearPaymentForm();
+
+
+    } catch (error) {
+
+        console.error(
+            "CANCEL PAYMENT ERROR:",
+            error
+        );
+
+
+        cancelButton.disabled =
+            false;
+
+        cancelButton.innerText =
+            "Cancel Payment Request";
+
+
+        status.className =
+            "status error";
+
+        status.innerHTML = `
+            ❌ ${error.message}
+        `;
 
     }
 
@@ -1213,8 +1156,29 @@ async function checkPaymentStatus(
     const button =
         document.getElementById("payButton");
 
+    const cancelButton =
+        document.getElementById("cancelPaymentBtn");
+
     const status =
         document.getElementById("status");
+
+
+    /* =====================================================
+       IMPORTANT:
+       STOP CHECKING IF STAFF CANCELLED THE TRANSACTION
+       ===================================================== */
+
+    if (
+        paymentCancelled ||
+        activeCheckoutRequestId !== checkoutRequestId
+    ) {
+
+        console.log(
+            "Status checking stopped for cancelled payment."
+        );
+
+        return;
+    }
 
 
     try {
@@ -1238,8 +1202,9 @@ async function checkPaymentStatus(
         }
 
 
-
-        /* PAYMENT SUCCESSFUL */
+        /* =================================================
+           PAYMENT SUCCESSFUL
+           ================================================= */
 
         if (
             data.status === "SUCCESS"
@@ -1247,6 +1212,16 @@ async function checkPaymentStatus(
 
             const payment =
                 data.payment;
+
+
+            /* Clear active transaction */
+
+            activeCheckoutRequestId =
+                null;
+
+
+            cancelButton.style.display =
+                "none";
 
 
             status.className =
@@ -1268,7 +1243,6 @@ async function checkPaymentStatus(
             button.disabled =
                 false;
 
-
             button.innerText =
                 "REQUEST PAYMENT";
 
@@ -1281,11 +1255,64 @@ async function checkPaymentStatus(
 
 
 
-        /* PAYMENT FAILED */
+        /* =================================================
+           PAYMENT CANCELLED
+           ================================================= */
+
+        if (
+            data.status === "CANCELLED"
+        ) {
+
+            activeCheckoutRequestId =
+                null;
+
+            cancelButton.style.display =
+                "none";
+
+
+            button.disabled =
+                false;
+
+            button.innerText =
+                "REQUEST PAYMENT";
+
+
+            status.className =
+                "status error";
+
+
+            status.innerHTML = `
+                <strong>⚠️ PAYMENT CANCELLED</strong>
+
+                <div class="receipt">
+                    This payment request has been cancelled.
+                </div>
+            `;
+
+
+            clearPaymentForm();
+
+
+            return;
+        }
+
+
+
+        /* =================================================
+           PAYMENT FAILED
+           ================================================= */
 
         if (
             data.status === "FAILED"
         ) {
+
+            activeCheckoutRequestId =
+                null;
+
+
+            cancelButton.style.display =
+                "none";
+
 
             status.className =
                 "status error";
@@ -1306,7 +1333,6 @@ async function checkPaymentStatus(
             button.disabled =
                 false;
 
-
             button.innerText =
                 "REQUEST PAYMENT";
 
@@ -1319,7 +1345,9 @@ async function checkPaymentStatus(
 
 
 
-        /* STILL WAITING */
+        /* =================================================
+           STILL WAITING
+           ================================================= */
 
         status.className =
             "status processing";
@@ -1327,8 +1355,12 @@ async function checkPaymentStatus(
 
         status.innerHTML = `
             ⏳ Waiting for customer to complete payment...
+            <br><br>
+            You can cancel this request if the details are incorrect.
         `;
 
+
+        /* Check again after 3 seconds */
 
         setTimeout(() => {
 
@@ -1347,21 +1379,30 @@ async function checkPaymentStatus(
         );
 
 
+        /*
+           Don't immediately destroy the active
+           transaction because a temporary network
+           problem may have occurred.
+        */
+
         status.className =
             "status error";
 
 
         status.innerHTML = `
             ❌ Unable to check payment status.
+            <br><br>
+            Retrying...
         `;
 
 
-        button.disabled =
-            false;
+        setTimeout(() => {
 
+            checkPaymentStatus(
+                checkoutRequestId
+            );
 
-        button.innerText =
-            "REQUEST PAYMENT";
+        }, 5000);
 
     }
 

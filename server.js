@@ -201,7 +201,10 @@ app.post("/api/mpesa/stkpush", requireLogin, async (req, res) => {
         const password = Buffer.from(
             `${shortCode}${passkey}${timestamp}`
         ).toString("base64");
-
+const accountReference =
+    paymentCategory === "Motor Insurance"
+        ? registrationNumber
+        : policyNumber || "Convenor";
         // Send STK Push
         const stkResponse = await axios.post(
             "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
@@ -217,8 +220,8 @@ app.post("/api/mpesa/stkpush", requireLogin, async (req, res) => {
 
                CallBackURL:
     "https://convenor-mpesa-production.onrender.com/api/mpesa/callback",
-                AccountReference: "Convenor",
-                TransactionDesc: "Convenor Insurance Payment"
+           AccountReference: accountReference,
+TransactionDesc: "Convenor Insurance Payment"
             },
             {
                 headers: {
@@ -276,6 +279,7 @@ if (paymentError) {
         });
     }
 });
+
 app.get("/api/mpesa/query/:checkoutRequestId", requireLogin, async (req, res) => {
     try {
         const checkoutRequestId = req.params.checkoutRequestId;
@@ -338,7 +342,61 @@ app.get("/api/mpesa/query/:checkoutRequestId", requireLogin, async (req, res) =>
         });
     }
 });
+// Cancel a pending payment request
+app.post("/api/mpesa/cancel-payment", requireLogin, async (req, res) => {
+    try {
+        const { checkoutRequestId } = req.body;
+
+        if (!checkoutRequestId) {
+            return res.status(400).json({
+                error: "Checkout Request ID is required"
+            });
+        }
+
+        const { data, error } = await supabase
+            .from("payments")
+            .update({
+                status: "CANCELLED",
+                result_description: "Payment request cancelled by staff"
+            })
+            .eq("checkout_request_id", checkoutRequestId)
+            .eq("status", "PENDING")
+            .select();
+
+        if (error) {
+            console.error("CANCEL PAYMENT ERROR:", error);
+
+            return res.status(500).json({
+                error: "Failed to cancel payment request"
+            });
+        }
+
+        if (!data || data.length === 0) {
+            return res.status(404).json({
+                error: "Payment is no longer pending or could not be found"
+            });
+        }
+
+        console.log(
+            "PAYMENT CANCELLED:",
+            checkoutRequestId
+        );
+
+        res.json({
+            success: true,
+            message: "Payment request cancelled successfully"
+        });
+
+    } catch (error) {
+        console.error("CANCEL PAYMENT SERVER ERROR:", error);
+
+        res.status(500).json({
+            error: "Server error while cancelling payment"
+        });
+    }
+});
 app.post("/api/mpesa/callback", async (req, res) => {
+
     console.log("=================================");
     console.log("M-PESA CALLBACK RECEIVED");
     console.log("=================================");
@@ -346,6 +404,7 @@ app.post("/api/mpesa/callback", async (req, res) => {
     const callback = req.body?.Body?.stkCallback;
 
     if (!callback) {
+
         console.log("Invalid M-Pesa callback received:");
         console.log(JSON.stringify(req.body, null, 2));
 
@@ -355,89 +414,254 @@ app.post("/api/mpesa/callback", async (req, res) => {
         });
     }
 
-    console.log("MerchantRequestID:", callback.MerchantRequestID);
-    console.log("CheckoutRequestID:", callback.CheckoutRequestID);
-    console.log("ResultCode:", callback.ResultCode);
-    console.log("ResultDesc:", callback.ResultDesc);
 
-    // Successful payment
-    if (callback.ResultCode === 0) {
+    console.log(
+        "MerchantRequestID:",
+        callback.MerchantRequestID
+    );
 
-        const metadata = callback.CallbackMetadata?.Item || [];
+    console.log(
+        "CheckoutRequestID:",
+        callback.CheckoutRequestID
+    );
 
-        const getMetadata = (name) => {
-            const item = metadata.find(item => item.Name === name);
-            return item?.Value;
-        };
+    console.log(
+        "ResultCode:",
+        callback.ResultCode
+    );
 
-        const amount = getMetadata("Amount");
-        const receipt = getMetadata("MpesaReceiptNumber");
-        const transactionDate = String(
-            getMetadata("TransactionDate") || ""
-        );
-        const phoneNumber = String(
-            getMetadata("PhoneNumber") || ""
-        ).replace(".0", "");
+    console.log(
+        "ResultDesc:",
+        callback.ResultDesc
+    );
 
-        const { error: updateError } = await supabase
+
+    /* =====================================================
+       FIRST: CHECK CURRENT PAYMENT STATUS
+       ===================================================== */
+
+    const { data: existingPayment, error: findError } =
+        await supabase
             .from("payments")
-            .update({
-                status: "SUCCESS",
-                mpesa_receipt: receipt || null,
-                transaction_date: transactionDate,
-                result_description: callback.ResultDesc
-            })
+            .select("status")
             .eq(
                 "checkout_request_id",
                 callback.CheckoutRequestID
+            )
+            .maybeSingle();
+
+
+    if (findError) {
+
+        console.error(
+            "CALLBACK PAYMENT LOOKUP ERROR:",
+            findError
+        );
+
+    }
+
+
+    /* =====================================================
+       IMPORTANT:
+       IF STAFF ALREADY CANCELLED IT,
+       DO NOT CHANGE IT BACK TO SUCCESS OR FAILED.
+       ===================================================== */
+
+    if (
+        existingPayment &&
+        existingPayment.status === "CANCELLED"
+    ) {
+
+        console.log(
+            "⚠️ Payment was already cancelled by staff."
+        );
+
+        console.log(
+            "Ignoring callback status update for:",
+            callback.CheckoutRequestID
+        );
+
+        console.log("=================================");
+
+        return res.json({
+            ResultCode: 0,
+            ResultDesc:
+                "Callback received for cancelled payment"
+        });
+    }
+
+
+    /* =====================================================
+       SUCCESSFUL PAYMENT
+       ===================================================== */
+
+    if (callback.ResultCode === 0) {
+
+        const metadata =
+            callback.CallbackMetadata?.Item || [];
+
+
+        const getMetadata = (name) => {
+
+            const item =
+                metadata.find(
+                    item => item.Name === name
+                );
+
+            return item?.Value;
+        };
+
+
+        const amount =
+            getMetadata("Amount");
+
+
+        const receipt =
+            getMetadata("MpesaReceiptNumber");
+
+
+        const transactionDate =
+            String(
+                getMetadata("TransactionDate") || ""
             );
 
+
+        const phoneNumber =
+            String(
+                getMetadata("PhoneNumber") || ""
+            ).replace(".0", "");
+
+
+        const { error: updateError } =
+            await supabase
+                .from("payments")
+                .update({
+                    status: "SUCCESS",
+                    mpesa_receipt:
+                        receipt || null,
+                    transaction_date:
+                        transactionDate,
+                    result_description:
+                        callback.ResultDesc
+                })
+                .eq(
+                    "checkout_request_id",
+                    callback.CheckoutRequestID
+                )
+                .eq(
+                    "status",
+                    "PENDING"
+                );
+
+
         if (updateError) {
-            console.error("Callback database error:", updateError);
+
+            console.error(
+                "Callback database error:",
+                updateError
+            );
+
         } else {
-            console.log("💾 Payment updated to SUCCESS.");
+
+            console.log(
+                "💾 Payment updated to SUCCESS."
+            );
+
         }
+
 
         console.log("=================================");
         console.log("💰 PAYMENT SUCCESSFUL");
         console.log("=================================");
-        console.log("Amount:", amount);
-        console.log("M-Pesa Receipt:", receipt);
-        console.log("Phone:", phoneNumber);
-        console.log("Transaction Date:", transactionDate);
+
+        console.log(
+            "Amount:",
+            amount
+        );
+
+        console.log(
+            "M-Pesa Receipt:",
+            receipt
+        );
+
+        console.log(
+            "Phone:",
+            phoneNumber
+        );
+
+        console.log(
+            "Transaction Date:",
+            transactionDate
+        );
+
     }
 
-    // Failed / cancelled payment
+
+    /* =====================================================
+       FAILED / CANCELLED BY CUSTOMER
+       ===================================================== */
+
     else {
 
-        const { error: updateError } = await supabase
-            .from("payments")
-            .update({
-                status: "FAILED",
-                result_description: callback.ResultDesc
-            })
-            .eq(
-                "checkout_request_id",
-                callback.CheckoutRequestID
-            );
+        const { error: updateError } =
+            await supabase
+                .from("payments")
+                .update({
+                    status: "FAILED",
+                    result_description:
+                        callback.ResultDesc
+                })
+                .eq(
+                    "checkout_request_id",
+                    callback.CheckoutRequestID
+                )
+                .eq(
+                    "status",
+                    "PENDING"
+                );
+
 
         if (updateError) {
-            console.error("Callback database error:", updateError);
+
+            console.error(
+                "Callback database error:",
+                updateError
+            );
+
         } else {
-            console.log("💾 Payment updated to FAILED.");
+
+            console.log(
+                "💾 Payment updated to FAILED."
+            );
+
         }
+
 
         console.log("=================================");
         console.log("❌ PAYMENT FAILED");
         console.log("=================================");
-        console.log("Reason:", callback.ResultDesc);
+
+        console.log(
+            "Reason:",
+            callback.ResultDesc
+        );
+
     }
 
-    // Always acknowledge receipt to Safaricom
+
+    /* =====================================================
+       ALWAYS ACKNOWLEDGE SAFARICOM CALLBACK
+       ===================================================== */
+
     res.json({
+
         ResultCode: 0,
-        ResultDesc: "Callback received successfully"
+
+        ResultDesc:
+            "Callback received successfully"
+
     });
+
 });
 app.get("/api/mpesa/payments", requireLogin, async (req, res) => {
     try {
